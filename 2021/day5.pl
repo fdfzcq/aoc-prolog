@@ -1,18 +1,33 @@
 process:-
     read_input(Lines),
-    foldl(mark_line, Lines, pair([], 0), pair(Marked, NumOfOverlaps)),
+    foldl(mark_line, Lines, pair([], []), pair(Marked, Overlaps)),
+    length(Overlaps, NumOfOverlaps),
     write(NumOfOverlaps),
     halt.
 
-mark_line(Line, pair(MarkedAcc, AccNum), pair(MarkedCoorsLine, NewNumOfOverlaps)):-
+mark_line(Line, pair(MarkedAcc, OverlapAcc), pair(MarkedCoorsLine, Overlaps)):-
     coordinates_line(Coordinates, Line),
-    marked_coors(MarkedAcc, Coordinates, MarkedCoorsLine, NumOfOverlaps),
-    NewNumOfOverlaps is AccNum + NumOfOverlaps.
+    marked_coors(MarkedAcc, Coordinates, MarkedCoorsLine, NewOverlaps),
+    union(OverlapAcc, NewOverlaps, Overlaps).
 
 coordinates_line(Coordinates, pair(pair(X1, Y1), pair(X2, Y2))):-
     valid_line(pair(X1, Y1), pair(X2, Y2)),
     findall(Coordinate, is_between(pair(X1, Y1), pair(X2, Y2), Coordinate), Coordinates);
-    Coordinates = [].
+    diagonal_coors(pair(X1, Y1), pair(X2, Y2), [], Coordinates).
+
+diagonal_coors(P, P, Acc, Coordinates):-
+    Coordinates = [P|Acc].
+diagonal_coors(pair(X1, Y1), pair(X2, Y2), Acc, Coordinates):-
+    next_coor(Coordinate, pair(X1, Y1), pair(X2, Y2)),
+    diagonal_coors(Coordinate, pair(X2, Y2), [pair(X1, Y1)|Acc], Coordinates).
+
+next_coor(pair(X, Y), pair(X1, Y1), pair(X2, Y2)):-
+    next_value(X, X1, X2),
+    next_value(Y, Y1, Y2).
+
+next_value(V, V1, V2):-
+    V1 < V2, V is V1 + 1;
+    V is V1 - 1.
 
 valid_line(pair(X1, Y1), pair(X2, Y2)):-
     X1 =:= X2; Y1 =:= Y2.
@@ -22,20 +37,13 @@ is_between(pair(X, Y1), pair(X, Y2), pair(X, Y)):-
 is_between(pair(X1, Y), pair(X2, Y), pair(X, Y)):-
     num_between(X1, X2, X).
 num_between(X1, X2, X):-
-    write(X1), nl, write(X2), nl, write(X), nl,
     number(X1), number(X2),
     MinX is min(X1, X2), MaxX is max(X1, X2),
     between(MinX, MaxX, X).
 
-marked_coors(MarkedCoors, Coordinates, NewMarkedCoors, NumOfOverlaps):-
-    exclude(overlaps(MarkedCoors), Coordinates, NotMarked),
-    append(MarkedCoors, NotMarked, NewMarkedCoors),
-    length(Coordinates, L),
-    length(NotMarked, UnmakredL),
-    NumOfOverlaps is L - UnmakredL.
-
-overlaps(MarkedCoors, Coordinate):-
-    member(Coordinate, MarkedCoors).
+marked_coors(MarkedCoors, Coordinates, NewMarkedCoors, Overlaps):-
+    union(Coordinates, MarkedCoors, NewMarkedCoors),
+    intersection(Coordinates, MarkedCoors, Overlaps).
 
 %% struct
 
